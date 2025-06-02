@@ -11,7 +11,7 @@ from fast_tech.models import table_registry
 
 
 @pytest.fixture
-def client():   
+def client():
     return TestClient(app)
 
 

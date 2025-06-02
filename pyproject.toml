@@ -15,7 +15,8 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{include = "tech_bridge_back", from = "src"}]
+packages = [{include = "fast_tech"}]
+
 
 
 [tool.poetry.group.dev.dependencies]
@@ -48,7 +49,7 @@ addopts = '-p no:warnings'
 lint = 'ruff check'
 pre_format = 'ruff check --fix'
 format = 'ruff format'
-run = 'fastapi dev fast_zero/app.py'
+run = 'fastapi dev fast_tech/app.py'
 pre_test = 'task lint'
-test = 'pytest -s -x --cov=fast_zero -vv'
+test = 'pytest -s -x --cov=fast_tech -vv'
 post_test = 'coverage html'

@@ -6,14 +6,30 @@ class Message(BaseModel):
 
 
 class UserSchema(BaseModel):
-    fullName: str
+    name: str
     username: str
     email: EmailStr
+    telefone: str
     password: str
 
 
+from pydantic import BaseModel
+
+
 class UserPublic(BaseModel):
-    fullName: str
-    username: str
-    email: EmailStr
     id: int
+    username: str
+    email: str
+    telefone: str
+
+    class Config:
+        orm_mode = True
+
+
+class UserDB(UserSchema):
+    id: int
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
