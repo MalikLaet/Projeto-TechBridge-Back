@@ -8,22 +8,19 @@ class Message(BaseModel):
 class UserSchema(BaseModel):
     name: str
     username: str
-    email: EmailStr
-    telefone: str
+    email: str
+    phone: str
     password: str
-
-
-from pydantic import BaseModel
 
 
 class UserPublic(BaseModel):
     id: int
     username: str
     email: str
-    telefone: str
+    phone: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserDB(UserSchema):

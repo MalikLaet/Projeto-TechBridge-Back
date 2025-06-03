@@ -1,20 +1,18 @@
 from datetime import datetime
 
 from sqlalchemy import func
-from sqlalchemy.orm import Mapped, mapped_column, registry
+from sqlalchemy.orm import Mapped, mapped_column
 
-table_registry = registry()
+from fast_tech.db import Base
 
 
-@table_registry.mapped_as_dataclass
-class User:
+class User(Base):
     __tablename__ = 'users'
 
-    id: Mapped[int] = mapped_column(init=False, primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
     username: Mapped[str] = mapped_column(unique=True)
     email: Mapped[str] = mapped_column(unique=True)
     password: Mapped[str]
-    telefone: Mapped[str]
-    created_at: Mapped[datetime] = mapped_column(
-        init=False, server_default=func.now()
-    )
+    phone: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())

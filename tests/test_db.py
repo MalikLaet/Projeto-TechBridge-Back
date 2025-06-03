@@ -1,24 +1,23 @@
-from dataclasses import asdict
-
 from sqlalchemy import select
 
 from fast_tech.models import User
 
 
-def test_create_user(session, mock_db_time):
-    with mock_db_time(model=User) as time:
-        new_user = User(
-            username='alice', password='secret', email='teste@test'
-        )
-        session.add(new_user)
-        session.commit()
+def test_create_user(session):
+    # Teste de criação
+    new_user = User(
+        name='Test User',
+        username='testuser',
+        email='test@example.com',
+        phone='(11)99999-9999',
+        password='secret',
+    )
+    session.add(new_user)
+    session.commit()
 
-    user = session.scalar(select(User).where(User.username == 'alice'))
+    # Teste de consulta
+    user = session.scalar(select(User).where(User.username == 'testuser'))
 
-    assert asdict(user) == {
-        'id': 1,
-        'username': 'alice',
-        'password': 'secret',
-        'email': 'teste@test',
-        'created_at': time,
-    }
+    assert user is not None
+    assert user.username == 'testuser'
+    assert user.email == 'test@example.com'

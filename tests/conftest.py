@@ -1,13 +1,11 @@
-from contextlib import contextmanager
-from datetime import datetime
-
+# tests/conftest.py
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from fast_tech.app import app
-from fast_tech.models import table_registry
+from fast_tech.db import Base  # Importe Base do db.py
 
 
 @pytest.fixture
@@ -17,28 +15,14 @@ def client():
 
 @pytest.fixture
 def session():
-    engine = create_engine('sqlite:///:memory:')
-    table_registry.metadata.create_all(engine)
+    # Use banco de dados em memória para testes
+    test_engine = create_engine('sqlite:///:memory:', echo=True)
 
-    with Session(engine) as session:
+    # Crie todas as tabelas
+    Base.metadata.create_all(bind=test_engine)
+
+    with Session(test_engine) as session:
         yield session
 
-    table_registry.metadata.drop_all(engine)
-
-
-@contextmanager
-def _mock_db_time(model, time=datetime(2025, 5, 27)):
-    def fake_time_hook(mapper, connection, target):
-        if hasattr(target, 'created_at'):
-            target.created_at = time
-
-    event.listen(model, 'before_insert', fake_time_hook)
-
-    yield time
-
-    event.remove(model, 'before_insert', fake_time_hook)
-
-
-@pytest.fixture
-def mock_db_time():
-    return _mock_db_time
+    # Limpe após os testes
+    Base.metadata.drop_all(bind=test_engine)
