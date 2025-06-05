@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from fast_tech.app import app
-from fast_tech.db import Base  # Importe Base do db.py
+from fast_tech.db import Base
 
 
 @pytest.fixture

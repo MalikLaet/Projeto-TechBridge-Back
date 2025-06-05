@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class Message(BaseModel):
@@ -28,5 +28,10 @@ class UserDB(UserSchema):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    username: str
     password: str
+
+
+class LoginResponse(BaseModel):
+    message: str
+    username: str

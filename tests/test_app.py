@@ -2,8 +2,12 @@ import uuid
 from http import HTTPStatus
 
 from fastapi.testclient import TestClient
+from passlib.context import CryptContext
 
 from fast_tech.app import app
+
+client = TestClient(app)
+pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
 
 def test_create_user():
@@ -13,7 +17,7 @@ def test_create_user():
     unique_email = f'{unique_username}@test.com'
 
     response = client.post(
-        '/cadastrar',
+        '/registerStudent',
         json={
             'name': unique_username,
             'username': unique_username,

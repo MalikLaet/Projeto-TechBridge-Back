@@ -1,32 +1,34 @@
 from http import HTTPStatus
-
-from fastapi import Depends, FastAPI, HTTPException
-from sqlalchemy.orm import Session
 from typing import List
+
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
+from passlib.context import CryptContext
+from passlib.hash import bcrypt
+from sqlalchemy.orm import Session
 
 from fast_tech.db import Base, SessionLocal, engine
 from fast_tech.models import User
-from fast_tech.schema import UserPublic, UserSchema
-from fastapi.middleware.cors import CORSMiddleware
+from fast_tech.schema import LoginResponse, UserLogin, UserPublic, UserSchema
 
 app = FastAPI()
 
-origins = [
-    "http://localhost:5173",  # Seu frontend React
-    "http://127.0.0.1:5173",
-]
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["http://localhost:5173"], 
     allow_credentials=True,
-    allow_methods=["*"],  # Permite todos os métodos (GET, POST, etc)
-    allow_headers=["*"],  # Permite todos os headers
+    allow_methods=['*'],
+    allow_headers=['*'],
 )
 
 # Cria tabelas
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
+pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 
 
 def get_db():
@@ -37,8 +39,14 @@ def get_db():
         db.close()
 
 
+def hash_password(password: str) -> str:
+    return bcrypt.hash(password)
+
+
 @app.post(
-    '/registerStudent', status_code=HTTPStatus.CREATED, response_model=UserPublic
+    '/registerStudent',
+    status_code=HTTPStatus.CREATED,
+    response_model=UserPublic,
 )
 def create_user(
     user: UserSchema,
@@ -50,23 +58,65 @@ def create_user(
     if db.query(User).filter(User.email == user.email).first():
         raise HTTPException(status_code=400, detail='Email já existe')
 
+    hashed_password = pwd_context.hash(user.password)
+
     db_user = User(
         name=user.name,
         username=user.username,
         email=user.email,
-        password=user.password,
+        password=hashed_password,
         phone=user.phone,
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
 
-    return db_user  # ✅ Agora retorna o objeto do usuário criado
+    return db_user
 
-@app.get("/usuarios", response_model=List[UserPublic])
+
+@app.get('/usuarios', response_model=List[UserPublic])
 def listar_usuarios(db: Session = Depends(get_db)):
-    """
-    Retorna todos os usuários cadastrados no sistema
-    """
     usuarios = db.query(User).all()
     return usuarios
+
+
+@app.post(
+    '/login',
+    status_code=HTTPStatus.OK,
+    response_model=LoginResponse,
+    responses={
+        404: {'description': 'Usuário não encontrado'},
+        400: {'description': 'Credenciais inválidas'},
+        500: {'description': 'Erro interno no servidor'},
+    },
+)
+async def login_student(
+    user: UserLogin,
+    db: Session = Depends(get_db),
+):
+    try:
+        db_user = db.query(User).filter(User.username == user.username).first()
+
+        if not db_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Usuário não encontrado',
+            )
+
+        if not pwd_context.verify(user.password, db_user.password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Credenciais inválidas',
+            )
+
+        return {
+            'message': 'Login bem-sucedido',
+            'username': db_user.username,
+        }
+
+    except Exception as e:
+        print(f'Erro durante o login: {str(e)}')
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='Ocorreu um erro durante o login',
+        )
