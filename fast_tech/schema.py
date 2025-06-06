@@ -35,3 +35,27 @@ class UserLogin(BaseModel):
 class LoginResponse(BaseModel):
     message: str
     username: str
+
+
+class CompanySchema(BaseModel):
+    cnpj: str
+    username: str
+    email: str
+    phone: str
+    password: str
+
+
+class CompanyOut(BaseModel):
+    id: int
+    cnpj: str
+    username: str
+    email: str
+    phone: str
+
+    class Config:
+        orm_mode = True
+
+
+class CompanyLogin(BaseModel):
+    username: str
+    password: str

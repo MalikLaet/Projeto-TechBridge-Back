@@ -9,16 +9,23 @@ from passlib.hash import bcrypt
 from sqlalchemy.orm import Session
 
 from fast_tech.db import Base, SessionLocal, engine
-from fast_tech.models import User
-from fast_tech.schema import LoginResponse, UserLogin, UserPublic, UserSchema
+from fast_tech.models import Company, User
+from fast_tech.schema import (
+    CompanyLogin,
+    CompanyOut,
+    CompanySchema,
+    LoginResponse,
+    UserLogin,
+    UserPublic,
+    UserSchema,
+)
 
 app = FastAPI()
 
 
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], 
+    allow_origins=['http://localhost:5173'],
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
@@ -112,6 +119,84 @@ async def login_student(
         return {
             'message': 'Login bem-sucedido',
             'username': db_user.username,
+        }
+
+    except Exception as e:
+        print(f'Erro durante o login: {str(e)}')
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='Ocorreu um erro durante o login',
+        )
+
+
+@app.post(
+    '/registerCompany',
+    status_code=HTTPStatus.CREATED,
+    response_model=CompanyOut,
+)
+def create_company(
+    company: CompanySchema,
+    db: Session = Depends(get_db),
+):
+    if db.query(Company).filter(Company.username == company.username).first():
+        raise HTTPException(status_code=400, detail='Username já existe')
+
+    if db.query(Company).filter(Company.email == company.email).first():
+        raise HTTPException(status_code=400, detail='Email já existe')
+
+    if db.query(Company).filter(Company.cnpj == company.cnpj).first():
+        raise HTTPException(status_code=400, detail='CNPJ já cadastrado')
+
+    hashed_password = pwd_context.hash(company.password)
+
+    db_company = Company(
+        cnpj=company.cnpj,
+        username=company.username,
+        email=company.email,
+        password=hashed_password,
+        phone=company.phone,
+    )
+    db.add(db_company)
+    db.commit()
+    db.refresh(db_company)
+
+    return db_company
+
+
+@app.post(
+    '/companyLogin',
+    status_code=HTTPStatus.OK,
+    response_model=LoginResponse,
+    responses={
+        404: {'description': 'Usuário não encontrado'},
+        400: {'description': 'Credenciais inválidas'},
+        500: {'description': 'Erro interno no servidor'},
+    },
+)
+async def login_company(
+    user: CompanyLogin,
+    db: Session = Depends(get_db),
+):
+    try:
+        db_company = (
+            db.query(Company).filter(Company.username == user.username).first()
+        )
+
+        if not db_company:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Usuário não encontrado',
+            )
+
+        if not pwd_context.verify(user.password, db_company.password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Credenciais inválidas',
+            )
+
+        return {
+            'message': 'Login bem-sucedido',
+            'username': db_company.username,
         }
 
     except Exception as e:
