@@ -59,3 +59,20 @@ class CompanyOut(BaseModel):
 class CompanyLogin(BaseModel):
     username: str
     password: str
+
+
+class CursoCreate(BaseModel):
+    name: str
+    description: str
+    youtube_link: str
+    company_id: int
+
+
+class CursoEmpresaOut(BaseModel):
+    id: int
+    name: str
+    description: str
+    youtube_link: str
+
+    class Config:
+        orm_mode = True

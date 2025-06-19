@@ -9,11 +9,13 @@ from passlib.hash import bcrypt
 from sqlalchemy.orm import Session
 
 from fast_tech.db import Base, SessionLocal, engine
-from fast_tech.models import Company, User
+from fast_tech.models import Company, Curso, User
 from fast_tech.schema import (
     CompanyLogin,
     CompanyOut,
     CompanySchema,
+    CursoCreate,
+    CursoEmpresaOut,
     LoginResponse,
     UserLogin,
     UserPublic,
@@ -196,12 +198,54 @@ async def login_company(
 
         return {
             'message': 'Login bem-sucedido',
+            'id': db_company.id,
             'username': db_company.username,
+            'email': db_company.email,
         }
-
     except Exception as e:
         print(f'Erro durante o login: {str(e)}')
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail='Ocorreu um erro durante o login',
         )
+
+
+@app.post('/courses')
+def criar_curso(curso: CursoCreate, db: Session = Depends(get_db)):
+    # Verifique se a empresa existe
+    empresa = db.query(Company).filter(Company.id == curso.company_id).first()
+
+    if not empresa:
+        print(f'Empresa com ID {curso.company_id} não encontrada')
+        raise HTTPException(
+            status_code=404,
+            detail=f'Empresa com ID {curso.company_id} não encontrada',
+        )
+
+    # Crie o curso
+    novo_curso = Curso(
+        name=curso.name,
+        description=curso.description,
+        youtube_link=curso.youtube_link,
+        company_id=curso.company_id,
+    )
+
+    db.add(novo_curso)
+    db.commit()
+    db.refresh(novo_curso)
+
+    return {'message': 'Curso criado com sucesso', 'company_id': novo_curso.id}
+
+
+@app.get(
+    '/companies/{company_id}/courses', response_model=List[CursoEmpresaOut]
+)
+def list_company_courses(company_id: int, db: Session = Depends(get_db)):
+    courses = db.query(Curso).filter(Curso.company_id == company_id).all()
+
+    if not courses:
+        raise HTTPException(
+            status_code=404, detail='No courses found for this company.'
+        )
+
+    return courses

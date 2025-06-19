@@ -1,7 +1,7 @@
-from datetime import datetime
+from typing import List
 
-from sqlalchemy import func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from fast_tech.db import Base
 
@@ -15,7 +15,6 @@ class User(Base):
     email: Mapped[str] = mapped_column(unique=True)
     password: Mapped[str]
     phone: Mapped[str]
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
 class Company(Base):
@@ -27,3 +26,19 @@ class Company(Base):
     email: Mapped[str] = mapped_column(unique=True)
     password: Mapped[str]
     phone: Mapped[str]
+
+    cursos: Mapped[List['Curso']] = relationship(
+        'Curso', back_populates='empresa'
+    )
+
+
+class Curso(Base):
+    __tablename__ = 'cursos'
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str]
+    description: Mapped[str]
+    youtube_link: Mapped[str]
+    company_id: Mapped[int] = mapped_column(ForeignKey('companies.id'))
+
+    empresa = relationship('Company', back_populates='cursos')
