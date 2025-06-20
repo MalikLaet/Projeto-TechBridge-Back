@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from fast_tech.db import Base
@@ -42,3 +42,11 @@ class Curso(Base):
     company_id: Mapped[int] = mapped_column(ForeignKey('companies.id'))
 
     empresa = relationship('Company', back_populates='cursos')
+
+
+class Inscricao(Base):
+    __tablename__ = 'inscricoes_cursos'
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey('users.id'))
+    course_id = Column(Integer, ForeignKey('cursos.id'))

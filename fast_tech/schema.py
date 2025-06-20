@@ -33,6 +33,7 @@ class UserLogin(BaseModel):
 
 
 class LoginResponse(BaseModel):
+    id: int
     message: str
     username: str
 
@@ -73,6 +74,21 @@ class CursoEmpresaOut(BaseModel):
     name: str
     description: str
     youtube_link: str
+
+    class Config:
+        orm_mode = True
+
+
+class InscricaoCreate(BaseModel):
+    course_id: int
+    student_id: int
+
+
+class CursoAlunoOut(BaseModel):
+    id: int
+    name: str
+    description: str
+    company_name: str
 
     class Config:
         orm_mode = True

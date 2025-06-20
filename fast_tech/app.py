@@ -9,13 +9,14 @@ from passlib.hash import bcrypt
 from sqlalchemy.orm import Session
 
 from fast_tech.db import Base, SessionLocal, engine
-from fast_tech.models import Company, Curso, User
+from fast_tech.models import Company, Curso, Inscricao, User
 from fast_tech.schema import (
     CompanyLogin,
     CompanyOut,
     CompanySchema,
     CursoCreate,
     CursoEmpresaOut,
+    InscricaoCreate,
     LoginResponse,
     UserLogin,
     UserPublic,
@@ -119,8 +120,10 @@ async def login_student(
             )
 
         return {
-            'message': 'Login bem-sucedido',
+            'message': 'Login bem sucedido',
+            'id': db_user.id,
             'username': db_user.username,
+            'email': db_user.email,
         }
 
     except Exception as e:
@@ -210,7 +213,7 @@ async def login_company(
         )
 
 
-@app.post('/courses')
+@app.post('/createCourses')
 def criar_curso(curso: CursoCreate, db: Session = Depends(get_db)):
     # Verifique se a empresa existe
     empresa = db.query(Company).filter(Company.id == curso.company_id).first()
@@ -249,3 +252,81 @@ def list_company_courses(company_id: int, db: Session = Depends(get_db)):
         )
 
     return courses
+
+
+@app.get('/courses', response_model=List[CursoEmpresaOut])
+def list_all_courses(db: Session = Depends(get_db)):
+    courses = db.query(Curso).join(Company).all()
+
+    if not courses:
+        raise HTTPException(status_code=404, detail='No courses found')
+
+    return courses
+
+
+@app.get('/courses/{curso_id}')
+def get_course(curso_id: int, db: Session = Depends(get_db)):
+    curso = db.query(Curso).filter(Curso.id == curso_id).first()
+    if not curso:
+        raise HTTPException(status_code=404, detail='Curso não encontrado.')
+    return curso
+
+
+@app.post('/enrollments', status_code=status.HTTP_201_CREATED)
+def create_enrollment(
+    inscricao: InscricaoCreate, db: Session = Depends(get_db)
+):
+    curso = db.query(Curso).filter(Curso.id == inscricao.course_id).first()
+    if not curso:
+        raise HTTPException(status_code=404, detail='Curso não encontrado.')
+
+    aluno = db.query(User).filter(User.id == inscricao.student_id).first()
+    if not aluno:
+        raise HTTPException(status_code=404, detail='Aluno não encontrado.')
+
+    ja_inscrito = (
+        db.query(Inscricao)
+        .filter(
+            Inscricao.student_id == inscricao.student_id,
+            Inscricao.course_id == inscricao.course_id,
+        )
+        .first()
+    )
+
+    if ja_inscrito:
+        raise HTTPException(
+            status_code=409, detail='Aluno já está inscrito nesse curso.'
+        )
+
+    nova_inscricao = Inscricao(
+        student_id=inscricao.student_id, course_id=inscricao.course_id
+    )
+
+    db.add(nova_inscricao)
+    db.commit()
+    db.refresh(nova_inscricao)
+
+    return {
+        'message': 'Inscrição realizada com sucesso',
+        'enrollment_id': nova_inscricao.id,
+    }
+
+
+@app.get('/alunos/meus-cursos', response_model=List[CursoEmpresaOut])
+def listar_cursos_aluno(user_id: int, db: Session = Depends(get_db)):
+    inscricoes = (
+        db.query(Inscricao).filter(Inscricao.student_id == user_id).all()
+    )
+
+    if not inscricoes:
+        return []
+
+    cursos_ids = [inscricao.course_id for inscricao in inscricoes]
+    cursos = db.query(Curso).filter(Curso.id.in_(cursos_ids)).all()
+
+    if not cursos:
+        raise HTTPException(
+            status_code=404, detail='Nenhum curso encontrado para o aluno.'
+        )
+
+    return cursos
