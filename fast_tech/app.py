@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from typing import List
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
@@ -21,6 +21,11 @@ from fast_tech.schema import (
     UserLogin,
     UserPublic,
     UserSchema,
+)
+from fast_tech.security import (
+    create_access_token,
+    get_current_company,
+    get_current_student
 )
 
 app = FastAPI()
@@ -118,12 +123,17 @@ async def login_student(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail='Credenciais inválidas',
             )
-
+        access_token = create_access_token({
+            'sub': db_user.username,
+            'role': 'student',
+            'id': db_user.id,
+        })
         return {
             'message': 'Login bem sucedido',
             'id': db_user.id,
             'username': db_user.username,
             'email': db_user.email,
+            'token': access_token,
         }
 
     except Exception as e:
@@ -312,7 +322,7 @@ def create_enrollment(
     }
 
 
-@app.get('/alunos/meus-cursos', response_model=List[CursoEmpresaOut])
+@app.get('/students/my-courses', response_model=List[CursoEmpresaOut])
 def listar_cursos_aluno(user_id: int, db: Session = Depends(get_db)):
     inscricoes = (
         db.query(Inscricao).filter(Inscricao.student_id == user_id).all()
@@ -330,3 +340,48 @@ def listar_cursos_aluno(user_id: int, db: Session = Depends(get_db)):
         )
 
     return cursos
+
+
+@app.delete(
+    '/companies/my-courses/{course_id}',
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        204: {'description': 'Curso excluído com sucesso'},
+        401: {'description': 'Não autenticado'},
+        403: {'description': 'Curso não pertence à empresa'},
+        404: {'description': 'Curso não encontrado'},
+        409: {
+            'description': 'Curso tem alunos inscritos e não pode ser excluído'
+        },
+    },
+)
+@app.delete(
+    '/companies/my-courses/{course_id}',
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        204: {'description': 'Curso excluído com sucesso'},
+    },
+)
+def delete_course(
+    course_id: int,
+    current_company = Depends(get_current_company),
+    db: Session = Depends(get_db),
+):
+    curso = db.query(Curso).filter(Curso.id == course_id).first()
+    if not curso:
+        raise HTTPException(status_code=404, detail='Curso não encontrado.')
+
+    if curso.company_id != current_company:
+        raise HTTPException(
+            status_code=403, detail='Curso não pertence à empresa logada.'
+        )
+
+    if db.query(Inscricao).filter(Inscricao.course_id == course_id).first():
+        raise HTTPException(
+            status_code=409,
+            detail='Curso possui alunos inscritos e não pode ser excluído.',
+        )
+
+    db.delete(curso)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
