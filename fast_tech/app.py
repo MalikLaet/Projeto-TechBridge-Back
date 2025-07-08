@@ -1,9 +1,8 @@
 from http import HTTPStatus
 from typing import List
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from passlib.hash import bcrypt
 from sqlalchemy.orm import Session
@@ -25,7 +24,6 @@ from fast_tech.schema import (
 from fast_tech.security import (
     create_access_token,
     get_current_company,
-    get_current_student
 )
 
 app = FastAPI()
@@ -39,11 +37,9 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
-# Cria tabelas
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 
 
 def get_db():
@@ -225,7 +221,6 @@ async def login_company(
 
 @app.post('/createCourses')
 def criar_curso(curso: CursoCreate, db: Session = Depends(get_db)):
-    # Verifique se a empresa existe
     empresa = db.query(Company).filter(Company.id == curso.company_id).first()
 
     if not empresa:
@@ -235,7 +230,6 @@ def criar_curso(curso: CursoCreate, db: Session = Depends(get_db)):
             detail=f'Empresa com ID {curso.company_id} não encontrada',
         )
 
-    # Crie o curso
     novo_curso = Curso(
         name=curso.name,
         description=curso.description,
@@ -364,7 +358,7 @@ def listar_cursos_aluno(user_id: int, db: Session = Depends(get_db)):
 )
 def delete_course(
     course_id: int,
-    current_company = Depends(get_current_company),
+    current_company=Depends(get_current_company),
     db: Session = Depends(get_db),
 ):
     curso = db.query(Curso).filter(Curso.id == course_id).first()

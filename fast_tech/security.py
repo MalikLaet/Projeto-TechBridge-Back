@@ -8,7 +8,7 @@ from jose import JWTError, jwt
 SECRET_KEY = 'sua_chave_super_secreta'
 ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/token')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
 
 
 def create_access_token(data: dict):
